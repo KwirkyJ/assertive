@@ -32,18 +32,18 @@ In the case of ```assertError(msg, expmsg, f, ...)```, in event of failure as ei
 
 Any other call pattern will raise an error.
 
-#### ```assertive.assertEquals(actual, expected[, msg])
+#### ```assertive.assertEquals(actual, expected[, msg])```
 Tests that two values are equivalent. If ```assertive:getExpectedActual()``` is true, first two parameters are reversed. If ```msg``` is a string literal, it will be the failure message in event that expected and actual are not equivalent (this ```msg``` parameter behavior is shared with all following assert routines).
 
-#### ```assertive.assertAlmostEquals(actual, expected[, delta][, msg])
+#### ```assertive.assertAlmostEquals(actual, expected[, delta][, msg])```
 Tests that the difference between two numbers is not greater than a margin. If ```delta``` is nil, it defaults to ```assertive:getDelta()```.
 
-#### ```assertive.assertNotEquals(a, b[, msg])
+#### ```assertive.assertNotEquals(a, b[, msg])```
 Tests that two values are not equivalent.
 
-#### ```assertive.assert<Type>(a[, msg])
+#### ```assertive.assert<Type>(a[, msg])```
 Tests that the parameter ```a``` is of a certain type, e.g. ```assertFunction(assertive.assertNotEquals)```. Available types are: Nil, Boolean, Number, String, Table, Function, Thread, and Userdata.
 
-#### ```assertive.assertNot<Type>(a[, msg])
+#### ```assertive.assertNot<Type>(a[, msg])```
 Tests that the parameter ```a``` is not of a certain type. 
 
