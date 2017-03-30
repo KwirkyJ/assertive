@@ -67,10 +67,17 @@ local assertNotString   = assertive.assertNotString
 local assert_not_string = assertive.assertNotString
 
 
+
+local f
+
+
+
 ---- TEST ASSERTIVE SETTINGS --------------------------------------
-assert(assertive:getDelta() == 1e-12) -- default value
-assert(assertive:getExpectedActual() == false) -- default value
-    
+assert (assertive:getDelta() == 1e-12, 
+        "default delta in almost_equals")
+assert (assertive:getExpectedActual() == false, 
+        "use Actual, Expected by default")
+
 assertive:setExpectedActual(true)
 assertive:setDelta(0.5)
 assertError("expected: 5, actual: 'green'",
@@ -94,7 +101,7 @@ assertError('values differ beyond allowed tolerance of 1e-12 :'..
 
 
 ---- TEST ASSERT ERROR ---------------------------------------------
-local function f() end
+f = function () end
 local ok, err
 
 ok, err = pcall( error, "coucou" )
@@ -115,36 +122,36 @@ local function multif(a,b,c)
 end
 
 assertError(multif, 1, 1, 3)
-    
+
 -- multif error should generate the provided message
 -- note that 'filename:linenum:' has been stripped!
 assertError('three arguments not equal', multif, 1, 3, 1)
-    
+
 -- like above, but in event of test passing or message mismatch
 -- will output the given message
 assertError('in event of error', 'three arguments not equal',
             multif, 1, 3, 1)
-    
+
 -- inner call raises no err
 assertError(assertError, multif, 1, 1, 1)
 assertError('No error generated', assertError, multif, 1, 1, 1)
-    
+
 -- error message does not match expected
 assertError(assertError, 'assertion failed', multif, 3, 's', 1)
-   
+
 -- demonstrate that failing assertError generates specified message
 assertError('this if messages do not match',
             assertError, 'this if messages do not match', 
                          'error error error',
                          -- ~= 'three arguments not equal' 
                          multif, 1, 3, 1)
-    
+
 -- like above, but does not care about test function error message
 assertError('problem: three args equal',
             assertError, 'problem: three args equal', 
                          nil, 
                          multif, 1, 1, 1) -- multif generates no error
-    
+
 -- 'informative' error raised if assertError gets wrong arg order
 assertError(
 [=[assertError received args in an unrecognized pattern!
@@ -163,16 +170,19 @@ assertError('msg',
             assertEquals, 1, 2, 'msg')
 assertEquals({1,2,b=5,{4}}, {1,b=5,2,{4}})
 assertEquals({'green'}, {'green'}, 'msg')
-local f = function() return 3 end
+f = function() return 3 end
 assertEquals(f, f, 'msg')
 assertEquals("string", "string", 'msg')
 assertEquals(true, true)
-    
+
 assertError('msg', assertEquals, nil, 'string', 'msg')
+assertError ('type mismatch', 
+             'expected: 5, actual: \'string\'', 
+             assertEquals, 'string', 5)
 assertError(assertEquals, 'string', nil, 'msg')
 assertError('err', assertEquals, 5, nil, 'err')
 -- local toString = LuaUnit._toString
-assertError( -- default behavior is to print both tables
+assertError("default behavior prints both tables",
 [=[table expected:
 {
   [1] = 4
@@ -183,14 +193,14 @@ actual:
     [1] = 4
   }
 }]=],    assertEquals,{{4}}, {4})
-assertError('order diff', assertEquals, {1,{6}}, {{6},1}, 'order diff')
+assertError('order diff msg', assertEquals, {1,{6}}, {{6},1}, 'order diff msg')
 assertError(assertEquals, false, f, 'false not function')
 
 
 
 ---- TEST ASSERT TYPES ----------------------------------------------
 --TODO? userdata and thread types
-local f = function() return end
+f = function() return end
 assertBoolean(true)
 assertFunction(f)
 assertNil(nil)
@@ -199,7 +209,7 @@ assertNumber(5.3)
 assertNumber(-0x4f)
 assertString('s')
 assertTable({4})
-  
+
 assertError('expected function type but was boolean',
             assertFunction, false)
 assertError('expected number type but was nil',
@@ -213,15 +223,14 @@ assertError('user message',
 
 ---- TEST ASSERT NOT TYPES ------------------------------------------
 --TODO? userdata and thread types
-local f = function() return end
 assertNotBoolean(4)
 assertNotFunction(false)
-assertNotNil(f)
+assertNotNil(f) -- f previously defined
 assertNotNumber(nil)
 assertNotNumber(f)
 assertNotString({})
 assertNotString(nil, 'msg')
-    
+
 assertError(assertNotBoolean, true)
 assertError('unexpected boolean',
             assertNotBoolean, true)
@@ -242,7 +251,7 @@ assertNotEquals(5, 2, 'msg')
 assertNotEquals("eggs", "spam", 'msg')
 assert_not_equals("table", {})
 assert_not_equals({}, {3})
-    
+
 assertError('unexpected equivalent values: 5',
             assertNotEquals, 5, 5)
 assertError("unexpected equivalent values: 'hello kitty!'",
@@ -255,22 +264,60 @@ assertError(assertNotEquals, {3, nil, "orange"}, {3, nil, "orange"})
 
 ---- TEST ASSERT ALMOST EQUALS --------------------------------------
 local default_delta = assertive:getDelta()
+
+-- NUMERIC EQUIVALENCE
 assertAlmostEquals(5, 5)
-assertAlmostEquals(0, 5e-13) -- default delta 1e-12
+assertAlmostEquals(0, 5e-13, nil, "uses default delta of 1e-12")
 assertAlmostEquals(5, 5.00001, 1e-4)
 assertAlmostEquals(5.00001, 5.0, 0.1, "if fail")
 assert_almost_equals(0.1, 0.1, nil, 'alias works too')
-    
+
+assertError("non-string messages are ignored", 
+            "values differ beyond allowed tolerance of 1e-12 :\n"..
+            "\tactual   : 3\n"..
+            "\texpected : 3.00001",
+            assertAlmostEquals, 3, 3.00001, nil, {"HI"})
+
 assertive:setDelta(1e-5)
 assertAlmostEquals(5.0, 5.0000001, nil, "if fail")
 assertive:setDelta(default_delta)
-    
-assertError("actual must be a number but was 'blue'",
-            assertAlmostEquals, "blue", "blue", 0.01)
-assertError("expected must be a number but was a table",
-            assertAlmostEquals, 5, {}, 0.01)
-assertError("actual must be a number but was nil",
+
+-- NON-NUMERIC EQUIVALENCE
+assertAlmostEquals ("blue", "blue", nil, 
+                    "string type valid; aliases to assertEquals")
+assertAlmostEquals ("blue", "blue", 0.01, "safe with delta")
+assertError ("error as in assertEquals", 
+             "expected: 'blae', actual: 'bloe'", 
+             assertAlmostEquals, "bloe", "blae", 1)
+
+assertAlmostEquals ({1, 0.5, 3.14}, {1, 0.5, 3.1412}, 0.005,
+                    "table values allowed")
+assertAlmostEquals ({4, "str"}, {4.01, "str"}, 0.02)
+assertError ("nested numeric value not equal; uses moretables.alike output", 
+             "First differing element at [2]['a']: (0.4002 - 0.4001) > 1e-12",
+             assertAlmostEquals, {1, {a=0.4001}}, {1, {a=0.4002}})
+assertError ("value absent from actual",
+             "Tables of differing length: 2 ~= 3",
+             assertAlmostEquals, {1, 2}, {1, 2, 3})
+assertError ("value extra in actual",
+             "Tables of differing length at [1]: 2 ~= 1",
+             assertAlmostEquals, {{3, 4}, 5}, {{4}, 5})
+assertError ("values at unlike indices",
+             "Differing types at [2]['b']: number ~= nil",
+             assertAlmostEquals, {4, {b=3}}, {4, {a=3}})
+assertError ("values at unlike indices",
+             "Differing types at [1]: table ~= number",
+             assertAlmostEquals, {{3, 1}, 4}, {4, {3, 1}})
+
+-- TYPE DISCREPANCY
+assertError ("type mismatch: expected table but was number",
+             assertAlmostEquals, 5, {}, 0.01)
+assertError("type mismatch: expected string but was nil",
             assertAlmostEquals, nil, "blue", 0.01)
+assertError ("type mismatch: expected number but was table",
+             assertAlmostEquals, {5}, 5, 0.01)
+
+-- ERROR REPORTING
 assertError('values differ beyond allowed tolerance of 1e-12 :\n'..
             '\tactual   : 5\n'..
             '\texpected : 5.000001',
@@ -278,11 +325,8 @@ assertError('values differ beyond allowed tolerance of 1e-12 :\n'..
 assertError('values differ beyond allowed tolerance of 0.001 :\n'..
             '\tactual   : 5\n'..
             '\texpected : 5.1', assertAlmostEquals, 5, 5.1, 1e-3)
-assertError("delta must be a number but was 'orange'",
+assertError("delta must be a number but was string",
             assertAlmostEquals, 3, 3.00001, "orange")
-assertError("non-string messages are ignored", nil,
-            assertAlmostEquals, 3, 3.00001, nil, {})
-    
 assertError('my msg',
             assertAlmostEquals, 1, 2, nil, 'my msg')
 assertError('my msg',

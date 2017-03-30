@@ -14,7 +14,7 @@
 -- 
 -- Author:  J. 'KwirkyJ' Smith <kwirkyj.smith0@gmail.com>
 -- Date:    2016
--- Version: 1.0.0
+-- Version: 1.1.0
 -- License: MIT (X11) License
 
 
@@ -31,7 +31,7 @@ local typenames = {"Nil", "Boolean", "Number", "String", "Table",
 
 -- table/class for module settings
 local assertive = {}
-assertive._VERSION = "1.0.0"
+assertive._VERSION = "1.1.0"
 assertive.delta    = DEFAULT_DELTA
 assertive.use_ea   = USE_EXPECTED_ACTUAL
 
@@ -237,25 +237,37 @@ assertive.assertAlmostEquals = function(actual, expected, delta, msg)
     end
     delta = delta or assertive.delta
     
-    local verify = function(kind, name, value)
-        if type(value) == kind then return end
-        if type(value) == 'table' then
-            error(name .. ' must be a '.. kind..' but was a table', 2)
-        else
-            error(string.format('%s must be a %s but was %s', 
-                                name, kind, wrapValue(value)), 2)
-        end
+    local d_type, e_type, a_type = type(delta), type(expected), type(actual)
+    if d_type ~= 'number' then
+        error (string.format ("delta must be a number but was %s",
+                              d_type),
+               2)
     end
-    verify('number', 'actual', actual)
-    verify('number', 'expected', expected)
-    verify('number', 'delta', delta)
+    if a_type ~= e_type then
+        error (string.format ("type mismatch: expected %s but was %s", 
+                              e_type, a_type),
+               2)
+    end
     if type(msg) ~= 'string' then msg = nil end
-    
-    if math.abs(actual - expected) > delta then
-        local errMsg = msg or 'values differ beyond allowed tolerance of '..delta..
-                              ' :\n\tactual   : ' ..actual..
-                              '\n\texpected : '..expected
-        error(errMsg, 2)
+    if a_type == 'number' then
+        if math.abs(actual - expected) > delta then
+            msg = msg or 
+                  'values differ beyond allowed tolerance of ' .. delta .. 
+                  ' :\n\tactual   : ' .. actual .. '\n\texpected : '.. expected
+            error(msg, 2)
+        end
+    elseif a_type == 'table' then
+        local ok, err = Tables.alike (actual, expected, delta)
+        if not ok then 
+            error (msg or err, 2)
+        end
+    else 
+        if assertive:getExpectedActual() then 
+            -- re-invert
+            return assertive.assertEquals (expected, actual, msg)
+        else
+            return assertive.assertEquals (actual, expected, msg)
+        end
     end
 end
 
